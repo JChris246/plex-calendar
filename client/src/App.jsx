@@ -1,34 +1,47 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import './App.css'
+import { useState } from "react";
+
+import { Calendar } from "./components/Calendar";
+import { LibrarySelection } from "./components/LibrarySelection";
+import { ResultList } from "./components/ResultList";
+import { Details } from "./components/Details";
 
 function App() {
-  const [count, setCount] = useState(0)
+    const [chosenLibrary, setChosenLibrary] = useState(null);
+    const [chosenDate, setChosenDate] = useState(null);
+    const [selectedMediaId, setSelectedMediaId] = useState(null);
+    const [show, setShow] = useState({ calendar: false, libraries: true, result: false, details: false });
 
-  return (
-    <div className="App">
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card bg-red-400">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </div>
-  )
+    const showCalendar = (id) => {
+        if (id)
+            setChosenLibrary(id);
+        setShow({ calendar: true, libraries: false, result: false, details: false });
+    };
+
+    const showLibrary = () => {
+        setChosenLibrary(null);
+        setShow({ calendar: false, libraries: true, result: false, details: false });
+    }
+
+    const showMediaOnDate = (datetime) => {
+        if (datetime)
+            setChosenDate(datetime);
+        setShow({ calendar: false, libraries: false, result: true, details: false });
+    }
+
+    const showMediaDetails = (id) => {
+        setSelectedMediaId(id);
+        setShow({ calendar: false, libraries: false, result: false, details: true });
+    }
+
+    if (show.libraries)
+        return <LibrarySelection chooseLibrary={showCalendar}/>;
+    if (show.calendar)
+        return <Calendar goBack={showLibrary} chooseDate={showMediaOnDate}/>
+    if (show.result)
+        return <ResultList timestamp={chosenDate} library={chosenLibrary} goBack={showCalendar}
+            selectMedia={showMediaDetails}/>
+    if (show.details)
+        return <Details id={selectedMediaId} library={chosenLibrary} goBack={showMediaOnDate}/>
 }
 
 export default App
