@@ -1,17 +1,21 @@
 const createError = require("http-errors");
 const express = require("express");
-const mongoose = require("mongoose");
 
 // environment variables configuration
 require("dotenv").config();
 
 global.env = process.env.NODE_ENV || "development";
 
+global.LOG_DIR = __dirname + "/logs";
+const morganLogger = require("./logger/morganLogger");
+const logger = require("./logger").setup();
+
 const app = express();
+app.use(morganLogger);
 app.use(express.json());
 // app.use(express.static("client/build"));
 
-app.use("/api/sample", require("./routes/sampleRoute"));
+app.use("/api/library", require("./routes/libraryRoute"));
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => next(createError(404)));
@@ -48,11 +52,11 @@ const onError = error => {
     // handle specific listen errors with friendly messages
     switch (error.code) {
         case "EACCES":
-            console.error(bind + " requires elevated privileges");
+            logger.error(bind + " requires elevated privileges");
             process.exit(1);
             break;
         case "EADDRINUSE":
-            console.error(bind + " is already in use");
+            logger.error(bind + " is already in use");
             process.exit(1);
             break;
         default:
@@ -66,7 +70,25 @@ const onError = error => {
 const onListening = () => {
     let addr = server.address();
     let bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
-    console.log("Listening on " + bind);
+
+    let plexUrl = process.env.PLEX_HOSTNAME + ":" + process.env.PLEX_PORT;
+    global.plexUrl = !plexUrl.startsWith("http") ? "http://" + plexUrl : plexUrl;
+    const { getRequest, transformToJson } = require("./utils");
+
+    getRequest(global.plexUrl + "/identity").then(({ statusCode, data }) => {
+        if (statusCode !== 200) {
+            logger.error("Unable to identify the plex media server");
+            process.exit(1);
+        }
+
+        const json = transformToJson(data);
+        logger.debug(JSON.stringify(json));
+        global.serverId = json.MediaContainer.machineIdentifier;
+        logger.debug("plex id: " + global.serverId);
+
+        logger.info("Listening on " + bind);
+    });
+
 };
 
 // Get port from environment (or 5000) and store in Express.
@@ -78,17 +100,4 @@ const http = require("http");
 const server = http.createServer(app);
 server.on("error", onError);
 server.on("listening", onListening);
-
-// try to connect to mongo
-// if successful allow the server to start accepting requests
-// else log the error and terminate
-const DB_URL = "mongodb://" + process.env.DB_HOST + "/" + process.env.DB_NAME;
-mongoose.connect(DB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    authSource: "admin",
-    user: process.env.DB_USER,
-    pass: process.env.DB_PASSWORD,
-}).then(() => server.listen(port)).catch(e => {
-    console.log(e);
-});
+server.listen(port); // TODO: don't open the port until the plex indentity has been established

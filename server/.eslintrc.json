@@ -23,7 +23,7 @@
             "double"
         ],
         "semi": [
-            "error",
+            "warn",
             "always"
         ],
         "no-dupe-keys": [
