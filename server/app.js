@@ -13,7 +13,7 @@ const logger = require("./logger").setup();
 const app = express();
 app.use(morganLogger);
 app.use(express.json());
-// app.use(express.static("client/build"));
+app.use(express.static("static"));
 
 app.use("/api/library", require("./routes/libraryRoute"));
 
