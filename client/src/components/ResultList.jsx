@@ -22,7 +22,7 @@ export const ResultList = ({ library, timestamp, goBack, selectMedia }) => {
     return (
         <div className="flex flex-col w-full h-screen mx-auto pb-4">
             <header className="text-purple-600 text-3xl font-bold text-center py-6 mb-1">
-                Media for {date.getMonth()} {date.toLocaleString("en-US", { month: "long" })}
+                Media for {date.getDate()} {date.toLocaleString("en-US", { month: "long" })}
             </header>
             <div className="flex flex-col w-full my-6">
                 {
