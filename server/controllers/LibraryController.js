@@ -1,5 +1,6 @@
 const logger = require("../logger").setup();
 const { getRequest, transformToJson } = require("../utils");
+const MAX_CACHE_AGE = 1000 * 60 * 60;
 
 module.exports.getLibraries = async (_, res) => {
     const { data } = await getRequest(global.plexUrl + "/library/sections/");
@@ -29,15 +30,12 @@ module.exports.getMediaOnDate = async (req, res) => {
         return res.status(400).send({ msg: "Could not construct a date from the date stamp sent" });
     }
 
-    const { data, statusCode } = await getRequest(global.plexUrl + "/library/sections/" + library + "/all");
+    const result = await getLibraryMedia(library);
 
-    if (statusCode === 404) {
-        logger.warn("Request made to 'getMediaOnDate' with a library id that plex could not find: " + library);
+    let json;
+    if (result === 1)
         return res.status(404).send({ msg: "Library with id: " + library + " not found" });
-    }
-
-    const json = transformToJson(data);
-    logger.debug("response: " + JSON.stringify(json));
+    else json = result;
 
     const array = json.MediaContainer.viewGroup === "show" ? "Directory" : "Video";
     const results = json.MediaContainer[array].filter(({ addedAt }) => {
@@ -63,15 +61,12 @@ module.exports.getMediaDetails = async (req, res) => {
         return res.status(400).send({ msg: "Parameter id is missing or invalid" });
     }
 
-    const { data, statusCode } = await getRequest(global.plexUrl + "/library/sections/" + library + "/all");
+    const result = await getLibraryMedia(library);
 
-    if (statusCode === 404) {
-        logger.warn("Request made to 'getMediaOnDate' with a library id that plex could not find: " + library);
+    let json;
+    if (result === 1)
         return res.status(404).send({ msg: "Library with id: " + library + " not found" });
-    }
-
-    const json = transformToJson(data);
-    logger.debug("response: " + JSON.stringify(json));
+    else json = result;
 
     const array = json.MediaContainer.viewGroup === "show" ? "Directory" : "Video";
     const results = json.MediaContainer[array]
@@ -96,4 +91,40 @@ module.exports.getMediaDetails = async (req, res) => {
         });
 
     return res.status(200).send(results[0]);
+};
+
+const cache = (key, data) => {
+    logger.info(key + " was added to the cache");
+    global.cache[key] = { data, entryTime: new Date().getTime() };
+};
+
+const getFromCache = (key) => {
+    if (global.cache[key]) {
+        if (global.cache[key].entryTime + MAX_CACHE_AGE > new Date().getTime()) {
+            return global.cache[key].data;
+        } else {
+            logger.info("Cache entry for " + key + " was invalid");
+            delete global.cache[key];
+            return null;
+        }
+    } else return null;
+};
+
+const getLibraryMedia = async (library) => {
+    let json = getFromCache(library);
+    if (!json) {
+        logger.info("library: " + library + " was not found in cache");
+        const { data, statusCode } = await getRequest(global.plexUrl + "/library/sections/" + library + "/all");
+
+        if (statusCode === 404) {
+            logger.warn("Request made to getMedia with a library id that plex could not find: " + library);
+            return 1;
+        }
+
+        json = transformToJson(data);
+        logger.debug("response: " + JSON.stringify(json));
+        cache(library, json);
+    }
+
+    return json;
 };

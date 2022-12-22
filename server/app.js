@@ -6,6 +6,8 @@ require("dotenv").config();
 
 global.env = process.env.NODE_ENV || "development";
 
+global.cache = {};
+
 global.LOG_DIR = __dirname + "/logs";
 const morganLogger = require("./logger/morganLogger");
 const logger = require("./logger").setup();
@@ -100,4 +102,4 @@ const http = require("http");
 const server = http.createServer(app);
 server.on("error", onError);
 server.on("listening", onListening);
-server.listen(port); // TODO: don't open the port until the plex indentity has been established
+server.listen(port); // TODO: don't open the port until the plex identity has been established
